@@ -1,69 +1,138 @@
+:root {
+  --app-bg: #f4f6f8;
+  --ink: #263240;
+  --muted: #5a6b7d;
+  --accent: #0d6efd;
+}
+
 body {
-  background: #f2f3f5;
-  color: #2d2f33;
+  background: var(--app-bg);
+  color: var(--ink);
+  font-size: 0.95rem;
 }
 
 main {
-  max-width: 1300px;
+  max-width: 1400px;
 }
 
 .app-shell {
-  min-height: 80vh;
+  min-height: 82vh;
+}
+
+.app-title {
+  font-size: 1.5rem;
+}
+
+.app-subtitle {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.app-tabs .nav-link {
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .btn-help {
   position: absolute;
-  right: 1.25rem;
-  top: 1rem;
-  border: 2px solid #ff2d2d;
-  color: #ff2d2d;
-  background: #ffecec;
+  right: 1rem;
+  top: 0.9rem;
+  border: 1px solid #dc3545;
+  color: #dc3545;
+  background: #fff5f6;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.7rem;
 }
 
-.center-block {
-  max-width: 560px;
-  margin-left: auto;
-  margin-right: auto;
-  text-align: center;
+.form-label {
+  font-size: 0.92rem;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
 }
 
 .status-message {
-  color: #d12525;
-  font-weight: 700;
-  min-height: 1.5rem;
+  color: #b42318;
+  font-weight: 600;
+  min-height: 1.2rem;
+  font-size: 0.85rem;
+}
+
+.table-wrap {
+  border: 1px solid #d8dee5;
+  border-radius: 0.5rem;
+  max-height: 340px;
+  overflow: auto;
+}
+
+#sourceTable th,
+#sourceTable td {
+  white-space: nowrap;
+  font-size: 0.84rem;
+}
+
+.grid-cell {
+  width: 100%;
+  min-width: 110px;
+  border: 1px solid #d4dbe4;
+  border-radius: 0.25rem;
+  padding: 0.2rem 0.35rem;
+  background: #ffffff;
+  font-size: 0.83rem;
 }
 
 .progress-wrap {
   max-width: 980px;
-  margin: 0 auto;
 }
 
 .progress {
-  height: 0.75rem;
+  height: 0.7rem;
+}
+
+.section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
 .log-box {
-  min-height: 340px;
-  max-height: 520px;
+  min-height: 210px;
+  max-height: 360px;
   overflow: auto;
-  background: #efefef;
-  border: 1px solid #cfcfcf;
+  background: #f5f7fa;
+  border: 1px solid #d5dce4;
   border-radius: 0.4rem;
-  padding: 0.9rem;
-  font-size: 1.05rem;
+  padding: 0.75rem;
+  font-size: 0.85rem;
 }
 
 .chart-frame {
-  min-height: 620px;
-  border: 1px solid #dedede;
-  border-radius: 0.6rem;
-  padding: 0.5rem;
-  background: #fafafa;
+  min-height: 430px;
+  border: 1px solid #dce3ea;
+  border-radius: 0.55rem;
+  padding: 0.35rem;
+  background: #fcfdff;
+}
+
+.help-modal-content {
+  border: none;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  box-shadow: 0 0.75rem 2rem rgba(18, 40, 66, 0.16);
+}
+
+.help-modal-header {
+  background: linear-gradient(90deg, #123f72, #1b5ba3);
+  color: #fff;
+}
+
+.help-modal-header .btn-close {
+  filter: invert(1);
 }
 
 .help-text {
   white-space: pre-wrap;
-  font-size: 0.95rem;
-  line-height: 1.45;
+  font-size: 0.9rem;
+  line-height: 1.5;
   margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: #2f3b4a;
 }

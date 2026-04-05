@@ -1,44 +1,24 @@
-const HELP_TEXT = `1. Download Template:
-   - Click "Download Template" to get the input Excel template.
-   - Fill in the girder data as specified in the template.
+const HELP_TEXT = `1. Data & Calculation Tab:
+   - Download Template to get the input Excel format.
+   - Upload the completed "Girder Data sheet" file.
+   - Review imported rows in the editable grid and adjust values before calculation.
+   - Set the number of intervals and run calculation.
+   - The Calculation Log is displayed in this same tab and can be downloaded.
 
-2. Upload Data:
-   - Upload the completed "Girder Data sheet" Excel file.
-   - Optionally, upload a FG DTM XML surface file to project the girder points onto the surface.
+2. Graphs Tab:
+   - Includes synchronized Deflection Profile and Plan View plots.
+   - The plan uses Northing (N) and Easting (E) as coordinates.
+   - Select Span/Girder from the selectors or click a girder in plan view.
+   - Selected girder is highlighted, and the profile updates automatically.
 
-3. Number of Intervals:
-   - Specify the number of intervals at which points will be calculated.
+3. DTM & Exports Tab:
+   - Optionally upload a DTM XML surface file.
+   - Export Top of Deck Deflected points after calculation.
 
-4. Calculate Points:
-   - Click "Calculate and Export Top-Of-Girder Points" to process the spreadsheet.
-   - The calculated points are exported as "Top of girder.xlsx".
-   - Note: The point description is in the format SSGGIID, where:
-       SS is the Span number,
-       GG is the girder number,
-       II is the interval point,
-       D is the side (L for left, R for right).
-     If Span is a number, SS is padded to 2 digits (e.g., 01). If Span is a letter, it is not padded (e.g., A).
-
-5. Deflection Inputs:
+4. Notes:
    - Deflection at midspan is required.
-   - Deflection at quarter-span and third-span are optional and provide redundancy.
-   - The deflection curve is assumed parabolic with zero at both supports.
-
-6. Project Points:
-   - Click "Export Top of Deck Deflected Points" to project the calculated points onto the surface.
-   - The program uses triangle-based interpolation to compute the surface elevation and adds the calculated deflection.
-   - If a point does not fall within the surface triangulation, its elevation is set to 0.
-   - The projected points are exported as "ToD Deflected.xlsx".
-
-7. Girder Profile Graph:
-   - Use the "Girder Profile Graph" tab to view the deflection parabola for a selected span and girder.
-   - The y-axis is shown in inches.
-   - Hover points to see Interval, station, and deflection.
-
-8. Download Log:
-   - Click "Download Log File" to save the processing log as "Log.txt".
-
-Ensure that your input files are in the same coordinate system.
+   - Deflection at quarter-span and third-span are optional.
+   - Ensure all files use the same coordinate system.
 
 For further assistance, please reach out to Rafa Ramirez.`;
 
@@ -68,15 +48,20 @@ const state = {
   topOfGirderPoints: [],
   profiles: {},
   spanToGirders: {},
+  girderGeometry: {},
   logs: [],
 };
 
 const ui = {
   helpText: document.getElementById("helpText"),
-  tabCalculator: document.getElementById("tabCalculator"),
-  tabGraph: document.getElementById("tabGraph"),
-  panelCalculator: document.getElementById("panelCalculator"),
-  panelGraph: document.getElementById("panelGraph"),
+  tabDataBtn: document.getElementById("tabDataBtn"),
+  tabGraphsBtn: document.getElementById("tabGraphsBtn"),
+  tabExportBtn: document.getElementById("tabExportBtn"),
+  panelData: document.getElementById("panelData"),
+  panelGraphs: document.getElementById("panelGraphs"),
+  panelExport: document.getElementById("panelExport"),
+  sourceTableHead: document.getElementById("sourceTableHead"),
+  sourceTableBody: document.getElementById("sourceTableBody"),
   fileInput: document.getElementById("fileInput"),
   dtmFileInput: document.getElementById("dtmFileInput"),
   uploadStatus: document.getElementById("uploadStatus"),
@@ -88,6 +73,7 @@ const ui = {
   graphSpanSelect: document.getElementById("graphSpanSelect"),
   graphGirderSelect: document.getElementById("graphGirderSelect"),
   profileChart: document.getElementById("profileChart"),
+  planChart: document.getElementById("planChart"),
 };
 
 function setProgress(percent, text) {
@@ -138,13 +124,21 @@ function computeParabolaA(observations) {
 }
 
 function activateTab(tab) {
-  const calc = tab === "calculator";
-  ui.panelCalculator.classList.toggle("d-none", !calc);
-  ui.panelGraph.classList.toggle("d-none", calc);
-  ui.tabCalculator.className = calc ? "btn btn-primary px-4" : "btn btn-outline-secondary px-4";
-  ui.tabGraph.className = calc ? "btn btn-outline-secondary px-4" : "btn btn-primary px-4";
+  const isData = tab === "data";
+  const isGraphs = tab === "graphs";
 
-  if (!calc) renderProfileChart();
+  ui.panelData.classList.toggle("d-none", !isData);
+  ui.panelGraphs.classList.toggle("d-none", !isGraphs);
+  ui.panelExport.classList.toggle("d-none", tab !== "export");
+
+  ui.tabDataBtn.classList.toggle("active", isData);
+  ui.tabGraphsBtn.classList.toggle("active", isGraphs);
+  ui.tabExportBtn.classList.toggle("active", tab === "export");
+
+  if (isGraphs) {
+    renderProfileChart();
+    renderPlanChart();
+  }
 }
 
 function triggerDownload(url, filename) {
@@ -182,18 +176,51 @@ function readWorkbook(file) {
   });
 }
 
+function normalizeRow(row) {
+  const result = Array.from({ length: TEMPLATE_HEADERS.length }, (_, i) => row?.[i] ?? "");
+  return result;
+}
+
+function renderSourceGrid() {
+  ui.sourceTableHead.innerHTML = `<tr>${TEMPLATE_HEADERS.map((h) => `<th>${h}</th>`).join("")}</tr>`;
+
+  if (!state.sourceRows.length) {
+    ui.sourceTableBody.innerHTML = '<tr><td colspan="18" class="text-center text-secondary py-3">Upload a spreadsheet to view/edit rows.</td></tr>';
+    return;
+  }
+
+  ui.sourceTableBody.innerHTML = "";
+  state.sourceRows.forEach((row, rowIndex) => {
+    const tr = document.createElement("tr");
+    TEMPLATE_HEADERS.forEach((_, colIndex) => {
+      const td = document.createElement("td");
+      const input = document.createElement("input");
+      input.className = "grid-cell";
+      input.value = row[colIndex] ?? "";
+      input.addEventListener("input", (event) => {
+        state.sourceRows[rowIndex][colIndex] = event.target.value;
+      });
+      td.appendChild(input);
+      tr.appendChild(td);
+    });
+    ui.sourceTableBody.appendChild(tr);
+  });
+}
+
 async function loadSourceRows() {
   const [file] = ui.fileInput.files;
   if (!file) {
     state.sourceRows = [];
     ui.uploadStatus.textContent = "";
+    renderSourceGrid();
     return;
   }
 
   const workbook = await readWorkbook(file);
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-  state.sourceRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }).slice(1);
-  ui.uploadStatus.textContent = "Spreadsheet uploaded correctly.";
+  state.sourceRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }).slice(1).map(normalizeRow);
+  ui.uploadStatus.textContent = "Spreadsheet uploaded correctly. You can edit values in the grid before calculation.";
+  renderSourceGrid();
 }
 
 function buildGirderPoints(row, intervals) {
@@ -290,6 +317,10 @@ function buildGirderPoints(row, intervals) {
     girderDisplay,
     aDefIn,
     aCamberIn,
+    support1N,
+    support1E,
+    support2N,
+    support2E,
     rows,
     graphPoints,
   };
@@ -336,6 +367,7 @@ function populateGirderSelect(spanValue) {
     return;
   }
 
+  const previous = ui.graphGirderSelect.value;
   ui.graphGirderSelect.disabled = false;
   ui.graphGirderSelect.innerHTML = "";
   girders.forEach((girder) => {
@@ -344,7 +376,7 @@ function populateGirderSelect(spanValue) {
     option.textContent = girder;
     ui.graphGirderSelect.appendChild(option);
   });
-  ui.graphGirderSelect.value = girders[0];
+  ui.graphGirderSelect.value = girders.includes(previous) ? previous : girders[0];
 }
 
 function renderProfileChart() {
@@ -358,7 +390,6 @@ function renderProfileChart() {
 
   const x = profile.map((point) => point.station);
   const y = profile.map((point) => Math.abs(point.deflectionIn));
-  const labels = profile.map((point) => `${point.deflectionIn.toFixed(3)}`);
 
   Plotly.newPlot(
     ui.profileChart,
@@ -366,22 +397,66 @@ function renderProfileChart() {
       {
         x,
         y,
-        mode: "lines+markers+text",
-        text: labels,
-        textposition: "top center",
-        hovertemplate: "Interval %{customdata[0]}<br>x = %{x:.2f} ft<br>deflection = %{customdata[1]:.3f} in<extra></extra>",
+        mode: "lines+markers",
+        hovertemplate: "Interval %{customdata[0]}<br>Station = %{x:.2f} ft<br>Deflection = %{customdata[1]:.3f} in<extra></extra>",
         customdata: profile.map((point) => [point.interval, point.deflectionIn]),
-        line: { width: 4, color: "#3A9AD9" },
-        marker: { size: 10 },
+        line: { width: 3, color: "#0d6efd" },
+        marker: { size: 8, color: "#0d6efd" },
       },
     ],
     {
       title: `<b>Span ${span} — Girder ${girder}</b>`,
       xaxis: { title: "Length along girder (ft)", zeroline: false },
       yaxis: { title: "Deflection (in)" },
-      margin: { t: 70, r: 30, b: 70, l: 70 },
-      paper_bgcolor: "#fafafa",
-      plot_bgcolor: "#fafafa",
+      margin: { t: 60, r: 25, b: 60, l: 60 },
+      paper_bgcolor: "#fcfdff",
+      plot_bgcolor: "#fcfdff",
+      showlegend: false,
+    },
+    { responsive: true },
+  );
+}
+
+function renderPlanChart() {
+  const span = ui.graphSpanSelect.value;
+  const selectedGirder = ui.graphGirderSelect.value;
+  if (!span) return;
+
+  const girders = Array.from(state.spanToGirders[span] ?? []).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  if (!girders.length) return;
+
+  const traces = girders
+    .map((girder) => {
+      const key = `${span}||${girder}`;
+      const geo = state.girderGeometry[key];
+      if (!geo) return null;
+      const isSelected = girder === selectedGirder;
+      return {
+        x: [geo.support1E, geo.support2E],
+        y: [geo.support1N, geo.support2N],
+        mode: "lines+markers",
+        line: {
+          width: isSelected ? 6 : 3,
+          color: isSelected ? "#d63384" : "#6c757d",
+        },
+        marker: { size: isSelected ? 10 : 7 },
+        name: `Girder ${girder}`,
+        customdata: [[span, girder], [span, girder]],
+        hovertemplate: `Span ${span}<br>Girder ${girder}<extra></extra>`,
+      };
+    })
+    .filter(Boolean);
+
+  Plotly.newPlot(
+    ui.planChart,
+    traces,
+    {
+      title: `<b>Plan View for Span ${span} (N/E)</b>`,
+      xaxis: { title: "Easting (ft)" },
+      yaxis: { title: "Northing (ft)", scaleanchor: "x", scaleratio: 1 },
+      margin: { t: 60, r: 25, b: 60, l: 70 },
+      paper_bgcolor: "#fcfdff",
+      plot_bgcolor: "#fcfdff",
       showlegend: false,
     },
     { responsive: true },
@@ -403,18 +478,27 @@ function runCalculation() {
   state.logs = [];
   state.profiles = {};
   state.spanToGirders = {};
+  state.girderGeometry = {};
 
   const output = [["N", "E", "Elevation (ft)", "Description", "Deflection (ft)", "Camber (ft)"]];
 
   const total = state.sourceRows.length;
   for (let rowIndex = 0; rowIndex < total; rowIndex += 1) {
-    const row = state.sourceRows[rowIndex];
+    const row = normalizeRow(state.sourceRows[rowIndex]);
+    state.sourceRows[rowIndex] = row;
+
     try {
       const result = buildGirderPoints(row, intervals);
       output.push(...result.rows);
 
       const profileKey = `${result.spanDisplay}||${result.girderDisplay}`;
       state.profiles[profileKey] = result.graphPoints;
+      state.girderGeometry[profileKey] = {
+        support1N: result.support1N,
+        support1E: result.support1E,
+        support2N: result.support2N,
+        support2E: result.support2E,
+      };
 
       if (!state.spanToGirders[result.spanDisplay]) {
         state.spanToGirders[result.spanDisplay] = new Set();
@@ -436,6 +520,7 @@ function runCalculation() {
   ui.logOutput.textContent = state.logs.join("\n");
   populateGraphSelectors();
   renderProfileChart();
+  renderPlanChart();
   exportRowsAsWorkbook(output, "Top of girder.xlsx");
   setProgress(100, "Calculation complete");
 }
@@ -470,8 +555,11 @@ function downloadLog() {
 }
 
 ui.helpText.textContent = HELP_TEXT;
-ui.tabCalculator.addEventListener("click", () => activateTab("calculator"));
-ui.tabGraph.addEventListener("click", () => activateTab("graph"));
+renderSourceGrid();
+
+ui.tabDataBtn.addEventListener("click", () => activateTab("data"));
+ui.tabGraphsBtn.addEventListener("click", () => activateTab("graphs"));
+ui.tabExportBtn.addEventListener("click", () => activateTab("export"));
 
 document.getElementById("downloadTemplateBtn").addEventListener("click", downloadTemplate);
 document.getElementById("calculateBtn").addEventListener("click", runCalculation);
@@ -483,6 +571,7 @@ ui.fileInput.addEventListener("change", async () => {
     await loadSourceRows();
   } catch (error) {
     state.sourceRows = [];
+    renderSourceGrid();
     ui.uploadStatus.textContent = `Error loading spreadsheet: ${error.message}`;
   }
 });
@@ -494,8 +583,25 @@ ui.dtmFileInput.addEventListener("change", () => {
 ui.graphSpanSelect.addEventListener("change", () => {
   populateGirderSelect(ui.graphSpanSelect.value);
   renderProfileChart();
+  renderPlanChart();
 });
 
-ui.graphGirderSelect.addEventListener("change", renderProfileChart);
+ui.graphGirderSelect.addEventListener("change", () => {
+  renderProfileChart();
+  renderPlanChart();
+});
+
+ui.planChart.addEventListener("plotly_click", (event) => {
+  const payload = event?.points?.[0]?.data?.customdata?.[0];
+  if (!payload) return;
+  const [span, girder] = payload;
+  if (ui.graphSpanSelect.value !== span) {
+    ui.graphSpanSelect.value = span;
+    populateGirderSelect(span);
+  }
+  ui.graphGirderSelect.value = girder;
+  renderProfileChart();
+  renderPlanChart();
+});
 
 setProgress(0, "Waiting for input");
