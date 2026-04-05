@@ -13,105 +13,117 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   </head>
   <body>
-    <main class="container py-4">
-      <section class="app-shell bg-white shadow-sm rounded-3 p-4 p-lg-5 position-relative">
-        <button
-          class="btn btn-help"
-          data-bs-toggle="modal"
-          data-bs-target="#helpModal"
-          type="button"
-        >
-          Help
-        </button>
+    <main class="container py-3 py-lg-4">
+      <section class="app-shell bg-white shadow-sm rounded-3 p-3 p-lg-4 position-relative">
+        <button class="btn btn-help" data-bs-toggle="modal" data-bs-target="#helpModal" type="button">Help</button>
 
-        <header class="text-center mb-4">
-          <h1 class="display-6 fw-bold mb-3">Girder and Top of Deck Deflected points</h1>
-          <p class="lead mb-0">
-            Download the Data Sheet template, fill in your data, upload the file and calculate girder and deck points.
-            <br />
-            Optionally, upload a FG DTM XML surface file to project the girder points and add deflections.
+        <header class="text-center mb-3">
+          <h1 class="app-title fw-bold mb-2">Girder and Top of Deck Deflected points</h1>
+          <p class="app-subtitle mb-0">
+            Use the tabs below to prepare input data, run calculations, review synchronized graphics,
+            and export deliverables.
           </p>
         </header>
 
-        <div class="d-flex justify-content-center gap-2 mb-3">
-          <button id="tabCalculator" class="btn btn-primary px-4" type="button">Calculator</button>
-          <button id="tabGraph" class="btn btn-outline-secondary px-4" type="button">Girder Profile Graph</button>
-        </div>
+        <ul class="nav nav-tabs app-tabs mb-3" id="mainTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tabDataBtn" type="button">Girder Calcs</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tabGraphsBtn" type="button">Graphs</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tabExportBtn" type="button">Deflected Deck</button>
+          </li>
+        </ul>
 
-        <p class="text-center text-secondary fs-5 mb-4">
-          The <strong>Calculator</strong> tab performs all calculations and exports. The
-          <strong>Girder Profile Graph</strong> tab displays the girder deflection profile graph.
-        </p>
-
-        <section id="panelCalculator">
-          <div class="center-block mb-3">
-            <button id="downloadTemplateBtn" class="btn btn-primary btn-lg" type="button">Download Template</button>
+        <section id="panelData">
+          <div class="row g-3 mb-3 align-items-end">
+            <div class="col-12 col-xl-3">
+              <button id="downloadTemplateBtn" class="btn btn-primary w-100" type="button">Download Template</button>
+            </div>
+            <div class="col-12 col-md-8 col-xl-6">
+              <label for="fileInput" class="form-label">Girder Data Sheet (.xlsx/.xls)</label>
+              <input class="form-control" id="fileInput" type="file" accept=".xlsx,.xls" />
+              <p id="uploadStatus" class="status-message mt-1 mb-0"></p>
+            </div>
+            <div class="col-12 col-md-4 col-xl-3">
+              <label for="intervalsInput" class="form-label">Intervals</label>
+              <input class="form-control" id="intervalsInput" type="number" value="10" min="1" max="250" />
+            </div>
           </div>
 
-          <div class="center-block mb-3">
-            <label for="fileInput" class="form-label fs-4">Girder Data sheet</label>
-            <input class="form-control form-control-lg" id="fileInput" type="file" accept=".xlsx,.xls" />
-            <p id="uploadStatus" class="status-message mt-2 mb-0"></p>
+          <div class="table-wrap mb-3">
+            <table class="table table-sm table-striped table-hover align-middle mb-0" id="sourceTable">
+              <thead id="sourceTableHead"></thead>
+              <tbody id="sourceTableBody"></tbody>
+            </table>
           </div>
 
-          <div class="center-block mb-3">
-            <label for="dtmFileInput" class="form-label fs-4">DTM XML Surface File (optional):</label>
-            <input class="form-control form-control-lg" id="dtmFileInput" type="file" accept=".xml" />
-            <p id="dtmUploadStatus" class="status-message mt-2 mb-0"></p>
-          </div>
-
-          <div class="center-block mb-4">
-            <label for="intervalsInput" class="form-label fs-4">Number of intervals:</label>
-            <input class="form-control form-control-lg" id="intervalsInput" type="number" value="10" min="1" max="250" />
-          </div>
-
-          <div class="progress-wrap mb-4">
+          <div class="progress-wrap mb-3">
             <div class="progress" role="progressbar" aria-label="Calculation progress" aria-valuemin="0" aria-valuemax="100">
               <div id="progressBar" class="progress-bar" style="width: 0%">0%</div>
             </div>
-            <p id="progressText" class="text-center fs-5 mt-2 mb-0">Waiting for input</p>
+            <p id="progressText" class="text-center small mt-2 mb-0">Waiting for input</p>
           </div>
 
-          <div class="center-block mb-2">
-            <button id="calculateBtn" class="btn btn-primary btn-lg" type="button">Calculate and Export Top-Of-Girder Points</button>
-          </div>
-          <div class="center-block mb-2">
-            <button id="projectBtn" class="btn btn-primary btn-lg" type="button">Export Top of Deck Deflected Points</button>
-          </div>
-          <div class="center-block mb-4">
-            <button id="downloadLogBtn" class="btn btn-primary btn-lg" type="button">Download Log File</button>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <button id="calculateBtn" class="btn btn-primary" type="button">Calculate and Export Top-Of-Girder Points</button>
+            <button id="downloadLogBtn" class="btn btn-outline-secondary" type="button">Download Log File</button>
           </div>
 
-          <h2 class="text-center fw-bold mb-3">Calculation Log</h2>
+          <h2 class="section-title mb-2">Calculation Log</h2>
           <pre id="logOutput" class="log-box"></pre>
         </section>
 
-        <section id="panelGraph" class="d-none">
-          <h2 class="text-center fw-bold mb-4">Girder Deflection Profile</h2>
+        <section id="panelGraphs" class="d-none">
           <div class="row g-3 align-items-end mb-3">
             <div class="col-12 col-lg-6">
-              <label for="graphSpanSelect" class="form-label fs-4">Span</label>
-              <select id="graphSpanSelect" class="form-select form-select-lg" disabled>
+              <label for="graphSpanSelect" class="form-label">Span</label>
+              <select id="graphSpanSelect" class="form-select" disabled>
                 <option value="">(Run calculation first)</option>
               </select>
             </div>
             <div class="col-12 col-lg-6">
-              <label for="graphGirderSelect" class="form-label fs-4">Girder</label>
-              <select id="graphGirderSelect" class="form-select form-select-lg" disabled>
+              <label for="graphGirderSelect" class="form-label">Girder</label>
+              <select id="graphGirderSelect" class="form-select" disabled>
                 <option value="">(Run calculation first)</option>
               </select>
             </div>
           </div>
-          <div id="profileChart" class="chart-frame"></div>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <h2 class="section-title mb-2">Plan View (N/E Coordinates)</h2>
+              <div id="planChart" class="chart-frame"></div>
+            </div>
+            <div class="col-12">
+              <h2 class="section-title mb-2">Deflection Profile</h2>
+              <div id="profileChart" class="chart-frame"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="panelExport" class="d-none">
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-lg-8">
+              <label for="dtmFileInput" class="form-label">DTM XML Surface File (optional)</label>
+              <input class="form-control" id="dtmFileInput" type="file" accept=".xml" />
+              <p id="dtmUploadStatus" class="status-message mt-1 mb-0"></p>
+            </div>
+            <div class="col-12 col-lg-4 d-grid">
+              <button id="projectBtn" class="btn btn-primary" type="button">Export Top of Deck Deflected Points</button>
+            </div>
+          </div>
         </section>
       </section>
     </main>
 
     <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h2 class="modal-title fs-4" id="helpModalLabel">Girder and Top of Deck Deflected points - Help</h2>
+        <div class="modal-content help-modal-content">
+          <div class="modal-header help-modal-header">
+            <h2 class="modal-title" id="helpModalLabel">Girder and Top of Deck Deflected points - Help</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
