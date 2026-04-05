@@ -4,7 +4,7 @@ from typing import Iterable
 
 import numpy as np
 
-from app.models import DeflectionPoint
+from ..models import DeflectionPoint
 
 
 def fit_parabola(points: Iterable[DeflectionPoint]) -> tuple[np.ndarray, float]:

@@ -4,14 +4,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.models import (
+from .models import (
     BuildProfileRequest,
     BuildProfileResponse,
     FitParabolaRequest,
     FitParabolaResponse,
     ProfilePoint,
 )
-from app.services.deflection import build_profile, fit_parabola
+from .services.deflection import build_profile, fit_parabola
 
 app = FastAPI(
     title="Bridge Superstructure App API",

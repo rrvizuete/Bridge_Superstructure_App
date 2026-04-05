@@ -10,22 +10,48 @@ Professional scaffolding for girder/top-of-deck deflection workflows.
 
 ## Current scaffold tabs
 
-1. **Input & Setup** - point input and interval configuration.
+1. **Input & Setup** - point input, Excel/CSV import (with optional girder filtering), and interval configuration.
 2. **Parabola Fit** - calls backend least-squares endpoint (`y = ax² + bx + c`).
 3. **Girder Profile** - generates profile points and renders a chart.
 4. **Plan View (Future)** - reserved for next iteration.
 
-## Run locally
+## Run locally (Codespaces-friendly)
+
+From repo root:
 
 ```bash
-cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+pip install -r backend/requirements.txt
+python app.py
 ```
 
 Open: `http://127.0.0.1:8000`
+
+> Note: use `source` (not `ource`) to activate the virtual environment.
+
+## Other ways to run/test your branch
+
+### Option 1: Run with uvicorn directly
+
+```bash
+source .venv/bin/activate
+uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Option 2: Quick API check from terminal
+
+With the server running in one terminal:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
 
 ## API endpoints
 
