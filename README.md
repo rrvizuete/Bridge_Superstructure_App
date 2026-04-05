@@ -28,6 +28,31 @@ python app.py
 
 Open: `http://127.0.0.1:8000`
 
+> Note: use `source` (not `ource`) to activate the virtual environment.
+
+## Other ways to run/test your branch
+
+### Option 1: Run with uvicorn directly
+
+```bash
+source .venv/bin/activate
+uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Option 2: Quick API check from terminal
+
+With the server running in one terminal:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
 ## API endpoints
 
 - `GET /api/health`
