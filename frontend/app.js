@@ -449,7 +449,7 @@ function renderPlanChart() {
         },
         marker: { size: isSelected ? 10 : 7 },
         name: `Girder ${girder}`,
-        customdata: [span, girder],
+        customdata: [[span, girder], [span, girder]],
         hovertemplate: `Span ${span}<br>Girder ${girder}<extra></extra>`,
       };
     })
@@ -461,22 +461,33 @@ function renderPlanChart() {
     {
       title: `<b>Plan View for Span ${span} (N/E)</b>`,
       xaxis: {
-        title: "Easting (ft)",
+        title: { text: "Easting (ft)", standoff: 34 },
         dtick: getPowerOfTenTickStep(
           Math.min(...traces.flatMap((t) => t.x)),
           Math.max(...traces.flatMap((t) => t.x)),
         ),
+        tickformat: ".0f",
+        exponentformat: "none",
+        showexponent: "none",
+        tickangle: -45,
+        nticks: 10,
+        automargin: true,
       },
       yaxis: {
-        title: "Northing (ft)",
+        title: { text: "Northing (ft)", standoff: 14 },
         scaleanchor: "x",
         scaleratio: 1,
         dtick: getPowerOfTenTickStep(
           Math.min(...traces.flatMap((t) => t.y)),
           Math.max(...traces.flatMap((t) => t.y)),
         ),
+        tickformat: ".0f",
+        exponentformat: "none",
+        showexponent: "none",
+        nticks: 10,
+        automargin: true,
       },
-      margin: { t: 60, r: 25, b: 60, l: 70 },
+      margin: { t: 60, r: 25, b: 115, l: 95 },
       paper_bgcolor: "#fcfdff",
       plot_bgcolor: "#fcfdff",
       showlegend: false,
@@ -615,7 +626,7 @@ ui.graphGirderSelect.addEventListener("change", () => {
 
 ui.planChart.addEventListener("plotly_click", (event) => {
   if (event?.event?.button !== 0) return;
-  const payload = event?.points?.[0]?.data?.customdata;
+  const payload = event?.points?.[0]?.customdata;
   if (!payload) return;
   const [span, girder] = payload;
   if (ui.graphSpanSelect.value !== span) {
