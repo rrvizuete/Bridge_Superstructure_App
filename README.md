@@ -10,19 +10,20 @@ Professional scaffolding for girder/top-of-deck deflection workflows.
 
 ## Current scaffold tabs
 
-1. **Input & Setup** - point input and interval configuration.
+1. **Input & Setup** - point input, Excel/CSV import (with optional girder filtering), and interval configuration.
 2. **Parabola Fit** - calls backend least-squares endpoint (`y = ax² + bx + c`).
 3. **Girder Profile** - generates profile points and renders a chart.
 4. **Plan View (Future)** - reserved for next iteration.
 
-## Run locally
+## Run locally (Codespaces-friendly)
+
+From repo root:
 
 ```bash
-cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+pip install -r backend/requirements.txt
+python app.py
 ```
 
 Open: `http://127.0.0.1:8000`

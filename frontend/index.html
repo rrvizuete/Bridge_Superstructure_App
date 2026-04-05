@@ -10,14 +10,27 @@
     />
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   </head>
   <body>
     <main class="container py-4">
       <header class="mb-4">
-        <h1 class="display-6 fw-bold">Bridge Superstructure App</h1>
-        <p class="text-secondary mb-0">
-          First-pass professional scaffolding with workflow tabs for import, calculate, review, and export.
-        </p>
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+          <div>
+            <h1 class="display-6 fw-bold mb-2">Bridge Superstructure App</h1>
+            <p class="text-secondary mb-0">
+              First-pass professional scaffolding with workflow tabs for import, calculate, review, and export.
+            </p>
+          </div>
+          <button
+            class="btn btn-outline-secondary"
+            data-bs-toggle="modal"
+            data-bs-target="#helpModal"
+            type="button"
+          >
+            Help
+          </button>
+        </div>
       </header>
 
       <ul class="nav nav-tabs" id="workflowTabs" role="tablist">
@@ -46,7 +59,23 @@
       <section class="tab-content border border-top-0 rounded-bottom p-4 bg-white shadow-sm" id="workflowTabContent">
         <article class="tab-pane fade show active" id="input" role="tabpanel">
           <h2 class="h4">Input points</h2>
-          <p class="text-secondary">Paste stations and deflections (CSV format: <code>station,deflection</code> per line).</p>
+          <p class="text-secondary">Paste stations and deflections (CSV format: <code>station,deflection</code> per line), or load an Excel/CSV file.</p>
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-lg-6">
+              <label for="pointsFile" class="form-label">Load from file (.xlsx, .xls, .csv)</label>
+              <input id="pointsFile" type="file" class="form-control" accept=".xlsx,.xls,.csv,text/csv" />
+            </div>
+            <div class="col-12 col-lg-3">
+              <label for="girderSelect" class="form-label">Girder (optional)</label>
+              <select id="girderSelect" class="form-select" disabled>
+                <option value="">All / No girder column</option>
+              </select>
+            </div>
+            <div class="col-12 col-lg-3 d-flex align-items-end">
+              <button id="loadFile" class="btn btn-outline-primary w-100" type="button">Load file into points</button>
+            </div>
+          </div>
+          <p id="fileStatus" class="small text-secondary mb-3">No file loaded.</p>
           <div class="row g-3">
             <div class="col-12 col-lg-8">
               <label for="pointsCsv" class="form-label">Measured points</label>
@@ -91,6 +120,32 @@
         </article>
       </section>
     </main>
+
+    <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 class="modal-title fs-5" id="helpModalLabel">Help: loading girder input data</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Use either manual CSV paste or file import in <strong>Input &amp; Setup</strong>.</p>
+            <h3 class="h6">Expected column names</h3>
+            <ul>
+              <li><code>station</code> (required)</li>
+              <li><code>deflection</code> (required)</li>
+              <li><code>girder</code> (optional, enables filtering by girder)</li>
+            </ul>
+            <h3 class="h6">Example worksheet</h3>
+            <pre class="mb-0">girder,station,deflection
+G1,0,0
+G1,20,-0.4
+G2,0,0
+G2,20,-0.3</pre>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="app.js"></script>
