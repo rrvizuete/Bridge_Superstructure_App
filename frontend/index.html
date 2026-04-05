@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bridge Superstructure App</title>
+    <title>Girder and Top of Deck Deflected points</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -14,110 +14,96 @@
   </head>
   <body>
     <main class="container py-4">
-      <header class="mb-4">
-        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
-          <div>
-            <h1 class="display-6 fw-bold mb-2">Bridge Superstructure App</h1>
-            <p class="text-secondary mb-0">
-              First-pass professional scaffolding with workflow tabs for import, calculate, review, and export.
-            </p>
-          </div>
-          <button
-            class="btn btn-outline-secondary"
-            data-bs-toggle="modal"
-            data-bs-target="#helpModal"
-            type="button"
-          >
-            Help
-          </button>
+      <section class="app-shell bg-white shadow-sm rounded-3 p-4 p-lg-5 position-relative">
+        <button
+          class="btn btn-help"
+          data-bs-toggle="modal"
+          data-bs-target="#helpModal"
+          type="button"
+        >
+          Help
+        </button>
+
+        <header class="text-center mb-4">
+          <h1 class="display-6 fw-bold mb-3">Girder and Top of Deck Deflected points</h1>
+          <p class="lead mb-0">
+            Download the Data Sheet template, fill in your data, upload the file and calculate girder and deck points.
+            <br />
+            Optionally, upload a FG DTM XML surface file to project the girder points and add deflections.
+          </p>
+        </header>
+
+        <div class="d-flex justify-content-center gap-2 mb-3">
+          <button id="tabCalculator" class="btn btn-primary px-4" type="button">Calculator</button>
+          <button id="tabGraph" class="btn btn-outline-secondary px-4" type="button">Girder Profile Graph</button>
         </div>
-      </header>
 
-      <ul class="nav nav-tabs" id="workflowTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="input-tab" data-bs-toggle="tab" data-bs-target="#input" type="button" role="tab">
-            1. Input & Setup
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="fit-tab" data-bs-toggle="tab" data-bs-target="#fit" type="button" role="tab">
-            2. Parabola Fit
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab">
-            3. Girder Profile
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="plan-tab" data-bs-toggle="tab" data-bs-target="#plan" type="button" role="tab">
-            4. Plan View (Future)
-          </button>
-        </li>
-      </ul>
+        <p class="text-center text-secondary fs-5 mb-4">
+          The <strong>Calculator</strong> tab performs all calculations and exports. The
+          <strong>Girder Profile Graph</strong> tab displays the girder deflection profile graph.
+        </p>
 
-      <section class="tab-content border border-top-0 rounded-bottom p-4 bg-white shadow-sm" id="workflowTabContent">
-        <article class="tab-pane fade show active" id="input" role="tabpanel">
-          <h2 class="h4">Input points</h2>
-          <p class="text-secondary">Paste stations and deflections (CSV format: <code>station,deflection</code> per line), or load an Excel/CSV file.</p>
-          <div class="row g-3 mb-3">
-            <div class="col-12 col-lg-6">
-              <label for="pointsFile" class="form-label">Load from file (.xlsx, .xls, .csv)</label>
-              <input id="pointsFile" type="file" class="form-control" accept=".xlsx,.xls,.csv,text/csv" />
+        <section id="panelCalculator">
+          <div class="center-block mb-3">
+            <button id="downloadTemplateBtn" class="btn btn-primary btn-lg" type="button">Download Template</button>
+          </div>
+
+          <div class="center-block mb-3">
+            <label for="fileInput" class="form-label fs-4">Girder Data sheet</label>
+            <input class="form-control form-control-lg" id="fileInput" type="file" accept=".xlsx,.xls" />
+            <p id="uploadStatus" class="status-message mt-2 mb-0"></p>
+          </div>
+
+          <div class="center-block mb-3">
+            <label for="dtmFileInput" class="form-label fs-4">DTM XML Surface File (optional):</label>
+            <input class="form-control form-control-lg" id="dtmFileInput" type="file" accept=".xml" />
+            <p id="dtmUploadStatus" class="status-message mt-2 mb-0"></p>
+          </div>
+
+          <div class="center-block mb-4">
+            <label for="intervalsInput" class="form-label fs-4">Number of intervals:</label>
+            <input class="form-control form-control-lg" id="intervalsInput" type="number" value="10" min="1" max="250" />
+          </div>
+
+          <div class="progress-wrap mb-4">
+            <div class="progress" role="progressbar" aria-label="Calculation progress" aria-valuemin="0" aria-valuemax="100">
+              <div id="progressBar" class="progress-bar" style="width: 0%">0%</div>
             </div>
-            <div class="col-12 col-lg-3">
-              <label for="girderSelect" class="form-label">Girder (optional)</label>
-              <select id="girderSelect" class="form-select" disabled>
-                <option value="">All / No girder column</option>
+            <p id="progressText" class="text-center fs-5 mt-2 mb-0">Waiting for input</p>
+          </div>
+
+          <div class="center-block mb-2">
+            <button id="calculateBtn" class="btn btn-primary btn-lg" type="button">Calculate and Export Top-Of-Girder Points</button>
+          </div>
+          <div class="center-block mb-2">
+            <button id="projectBtn" class="btn btn-primary btn-lg" type="button">Export Top of Deck Deflected Points</button>
+          </div>
+          <div class="center-block mb-4">
+            <button id="downloadLogBtn" class="btn btn-primary btn-lg" type="button">Download Log File</button>
+          </div>
+
+          <h2 class="text-center fw-bold mb-3">Calculation Log</h2>
+          <pre id="logOutput" class="log-box"></pre>
+        </section>
+
+        <section id="panelGraph" class="d-none">
+          <h2 class="text-center fw-bold mb-4">Girder Deflection Profile</h2>
+          <div class="row g-3 align-items-end mb-3">
+            <div class="col-12 col-lg-6">
+              <label for="graphSpanSelect" class="form-label fs-4">Span</label>
+              <select id="graphSpanSelect" class="form-select form-select-lg" disabled>
+                <option value="">(Run calculation first)</option>
               </select>
             </div>
-            <div class="col-12 col-lg-3 d-flex align-items-end">
-              <button id="loadFile" class="btn btn-outline-primary w-100" type="button">Load file into points</button>
+            <div class="col-12 col-lg-6">
+              <label for="graphGirderSelect" class="form-label fs-4">Girder</label>
+              <select id="graphGirderSelect" class="form-select form-select-lg" disabled>
+                <option value="">(Run calculation first)</option>
+              </select>
             </div>
           </div>
-          <p id="fileStatus" class="small text-secondary mb-3">No file loaded.</p>
-          <div class="row g-3">
-            <div class="col-12 col-lg-8">
-              <label for="pointsCsv" class="form-label">Measured points</label>
-              <textarea id="pointsCsv" class="form-control" rows="8">0,0
-20,-0.4
-40,-1.1
-60,-1.0
-80,-0.35
-100,0</textarea>
-            </div>
-            <div class="col-12 col-lg-4">
-              <label for="intervals" class="form-label">Intervals</label>
-              <input id="intervals" type="number" class="form-control" min="2" max="500" value="10" />
-              <div class="form-text">Used for generated profile stations.</div>
-            </div>
-          </div>
-        </article>
-
-        <article class="tab-pane fade" id="fit" role="tabpanel">
-          <h2 class="h4">Least-squares parabola fit</h2>
-          <p class="text-secondary">Run a backend calculation to fit <code>y = ax² + bx + c</code>.</p>
-          <button id="runFit" class="btn btn-primary">Run fit</button>
-          <pre id="fitResult" class="result-box mt-3">No results yet.</pre>
-        </article>
-
-        <article class="tab-pane fade" id="profile" role="tabpanel">
-          <h2 class="h4">Girder profile</h2>
-          <p class="text-secondary">Build interval-based deflection profile from fitted parabola.</p>
-          <button id="buildProfile" class="btn btn-primary">Generate profile</button>
-          <div id="profileChart" class="mt-3"></div>
-          <pre id="profileResult" class="result-box mt-3">No profile generated yet.</pre>
-        </article>
-
-        <article class="tab-pane fade" id="plan" role="tabpanel">
-          <h2 class="h4">Future plan-view scaffold</h2>
-          <ul>
-            <li>Per-girder geometry import.</li>
-            <li>Station-by-station heatmap/labels in plan view.</li>
-            <li>Overlay of measured versus computed deflections.</li>
-          </ul>
-          <p class="text-secondary mb-0">This tab is intentionally scaffold-only for the next iteration.</p>
-        </article>
+          <div id="profileChart" class="chart-frame"></div>
+        </section>
       </section>
     </main>
 
@@ -125,23 +111,11 @@
       <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
-            <h2 class="modal-title fs-5" id="helpModalLabel">Help: loading girder input data</h2>
+            <h2 class="modal-title fs-4" id="helpModalLabel">Girder and Top of Deck Deflected points - Help</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <p>Use either manual CSV paste or file import in <strong>Input &amp; Setup</strong>.</p>
-            <h3 class="h6">Expected column names</h3>
-            <ul>
-              <li><code>station</code> (required)</li>
-              <li><code>deflection</code> (required)</li>
-              <li><code>girder</code> (optional, enables filtering by girder)</li>
-            </ul>
-            <h3 class="h6">Example worksheet</h3>
-            <pre class="mb-0">girder,station,deflection
-G1,0,0
-G1,20,-0.4
-G2,0,0
-G2,20,-0.3</pre>
+            <pre class="help-text mb-0" id="helpText"></pre>
           </div>
         </div>
       </div>
