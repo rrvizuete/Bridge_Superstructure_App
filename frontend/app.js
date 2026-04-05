@@ -417,6 +417,14 @@ function renderProfileChart() {
   );
 }
 
+function getPowerOfTenTickStep(minValue, maxValue) {
+  const range = Math.max(0, Math.abs(maxValue - minValue));
+  if (range <= 0) return 1;
+  const approx = range / 8;
+  const exponent = Math.round(Math.log10(Math.max(1, approx)));
+  return 10 ** exponent;
+}
+
 function renderPlanChart() {
   const span = ui.graphSpanSelect.value;
   const selectedGirder = ui.graphGirderSelect.value;
@@ -441,7 +449,7 @@ function renderPlanChart() {
         },
         marker: { size: isSelected ? 10 : 7 },
         name: `Girder ${girder}`,
-        customdata: [[span, girder], [span, girder]],
+        customdata: [span, girder],
         hovertemplate: `Span ${span}<br>Girder ${girder}<extra></extra>`,
       };
     })
@@ -452,8 +460,22 @@ function renderPlanChart() {
     traces,
     {
       title: `<b>Plan View for Span ${span} (N/E)</b>`,
-      xaxis: { title: "Easting (ft)" },
-      yaxis: { title: "Northing (ft)", scaleanchor: "x", scaleratio: 1 },
+      xaxis: {
+        title: "Easting (ft)",
+        dtick: getPowerOfTenTickStep(
+          Math.min(...traces.flatMap((t) => t.x)),
+          Math.max(...traces.flatMap((t) => t.x)),
+        ),
+      },
+      yaxis: {
+        title: "Northing (ft)",
+        scaleanchor: "x",
+        scaleratio: 1,
+        dtick: getPowerOfTenTickStep(
+          Math.min(...traces.flatMap((t) => t.y)),
+          Math.max(...traces.flatMap((t) => t.y)),
+        ),
+      },
       margin: { t: 60, r: 25, b: 60, l: 70 },
       paper_bgcolor: "#fcfdff",
       plot_bgcolor: "#fcfdff",
@@ -592,7 +614,8 @@ ui.graphGirderSelect.addEventListener("change", () => {
 });
 
 ui.planChart.addEventListener("plotly_click", (event) => {
-  const payload = event?.points?.[0]?.data?.customdata?.[0];
+  if (event?.event?.button !== 0) return;
+  const payload = event?.points?.[0]?.data?.customdata;
   if (!payload) return;
   const [span, girder] = payload;
   if (ui.graphSpanSelect.value !== span) {

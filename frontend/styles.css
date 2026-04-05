@@ -33,6 +33,23 @@ main {
   font-size: 0.95rem;
 }
 
+.app-tabs {
+  border-bottom-color: #cfd6df;
+}
+
+.app-tabs .nav-link {
+  background: #eceff3;
+  border-color: #cfd6df;
+  color: #314255;
+  margin-right: 0.2rem;
+}
+
+.app-tabs .nav-link.active {
+  background: #dfe5ec;
+  border-color: #c1cad6;
+  color: #1f2c3c;
+}
+
 .btn-help {
   position: absolute;
   right: 1rem;
