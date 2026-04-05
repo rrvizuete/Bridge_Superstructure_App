@@ -1,0 +1,19 @@
+body {
+  background: #f4f6f8;
+}
+
+main {
+  max-width: 1100px;
+}
+
+.result-box {
+  min-height: 120px;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+#profileChart {
+  min-height: 360px;
+}
