@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Girder and Top of Deck Deflected points</title>
+
+  <!-- XLSX -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- Chart.js + DataLabels -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 30px auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    h1, h2 { text-align: center; }
+    p, label { text-align: center; line-height: 1.5; }
+    .center { text-align: center; }
+
+    button {
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 1rem;
+      transition: background-color 0.2s ease;
+    }
+    button:hover { background-color: #0056b3; }
+
+    input[type="file"], input[type="number"], select {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+      width: 100%;
+      max-width: 340px;
+      display: block;
+      margin: 0 auto;
+      background: #fff;
+    }
+
+    .red-message {
+      color: red;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    pre#logOutput {
+      background-color: #f0f0f0;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    #progressBarContainer { text-align: center; margin: 10px 0; }
+    #progressBar { width: 80%; height: 20px; }
+
+    #helpButton {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: #ffcccc;
+      color: red;
+      border: 2px solid red;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin: 10px 0 10px 0;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      background-color: #e9ecef;
+      color: #333;
+      border: 1px solid #ced4da;
+    }
+    .tab-btn:hover { background-color: #dde2e6; }
+    .tab-btn.active {
+      background-color: #007bff;
+      color: #fff;
+      border-color: #007bff;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .tab-instructions {
+      text-align: center;
+      color: #555;
+      margin: 6px 0 18px 0;
+      font-size: 0.98rem;
+    }
+
+    /* Chart controls */
+    .chart-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap: 12px;
+      align-items: end;
+      margin: 10px 0 12px 0;
+    }
+    @media (max-width: 900px) {
+      .chart-controls { grid-template-columns: 1fr; }
+    }
+    .control-group label {
+      text-align: left;
+      display: block;
+      font-weight: 600;
+      margin: 0 0 6px 0;
+    }
+
+    /* Taller chart */
+    .chart-wrap {
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      height: 480px;
+    }
+    #girderChart {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <button id="helpButton" type="button">Help</button>
+
+    <h1>Girder and Top of Deck Deflected points</h1>
+    <p>
+      Download the Data Sheet template, fill in your data, upload the file and calculate girder and deck points.<br>
+      Optionally, upload a FG DTM XML surface file to project the girder points and add deflections.
+    </p>
+
+    <div class="tabs">
+      <button class="tab-btn active" type="button" data-tab="tab-calc">Calculator</button>
+      <button class="tab-btn" type="button" data-tab="tab-graph">Girder Profile Graph</button>
+    </div>
+    <div class="tab-instructions">
+      The <b>Calculator</b> tab performs all calculations and exports. The <b>Girder Profile Graph</b> tab displays the girder deflection profile graph.
+    </div>
+
+    <!-- TAB 1 -->
+    <div id="tab-calc" class="tab-content active">
+      <div class="center">
+        <button id="downloadTemplateBtn" type="button">Download Template</button>
+      </div>
+      <br/>
+
+      <div class="center">
+        <label for="fileInput">Girder Data sheet</label>
+        <input type="file" id="fileInput" accept=".xlsx"/>
+        <div id="uploadStatus"></div>
+      </div>
+      <br/>
+
+      <div class="center">
+        <label for="dtmFileInput">DTM XML Surface File (optional):</label>
+        <input type="file" id="dtmFileInput" accept=".xml"/>
+        <div id="dtmUploadStatus"></div>
+      </div>
+      <br/>
+
+      <div class="center">
+        <label for="intervalsInput">Number of intervals:</label>
+        <input type="number" id="intervalsInput" value="10" min="1"/>
+      </div>
+      <br/>
+
+      <div id="progressBarContainer" class="center">
+        <progress id="progressBar" value="0" max="100"></progress>
+        <div id="progressText"></div>
+      </div>
+      <br/>
+
+      <div class="center">
+        <button id="calculateBtn" type="button">Calculate and Export Top-Of-Girder Points</button>
+      </div>
+      <br/>
+
+      <div class="center">
+        <button id="projectBtn" type="button">Export Top of Deck Deflected Points</button>
+      </div>
+      <br/>
+
+      <div class="center">
+        <button id="downloadLogBtn" type="button">Download Log File</button>
+      </div>
+      <br/>
+
+      <h2>Calculation Log</h2>
+      <pre id="logOutput"></pre>
+    </div>
+
+    <!-- TAB 2 -->
+    <div id="tab-graph" class="tab-content">
+      <h2>Girder Deflection Profile</h2>
+
+      <div class="chart-controls">
+        <div class="control-group">
+          <label for="graphSpanSelect">Span</label>
+          <select id="graphSpanSelect" disabled>
+            <option value="">(Run calculation first)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="graphGirderSelect">Girder</label>
+          <select id="graphGirderSelect" disabled>
+            <option value="">(Run calculation first)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <canvas id="girderChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================
+    // Tabs
+    // =========================
+    function activateTab(tabId) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+      const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+      const tab = document.getElementById(tabId);
+      if (btn) btn.classList.add("active");
+      if (tab) tab.classList.add("active");
+    }
+
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tabId = btn.getAttribute("data-tab");
+        activateTab(tabId);
+        if (tabId === "tab-graph") refreshChartFromSelections();
+      });
+    });
+
+    // =========================
+    // Globals
+    // =========================
+    let calculatedPoints = null;
+
+    // profiles[key] = { spanDisplay, girderDisplay, Lft, points:[{xFt, defIn, i}] }
+    const profiles = {};
+    const spanToGirders = {};
+    let girderChart = null;
+
+    // Register datalabels safely
+    try {
+      if (window.Chart && window.ChartDataLabels) Chart.register(ChartDataLabels);
+    } catch (e) { console.warn(e); }
+
+    // =========================
+    // UI helpers
+    // =========================
+    function updateProgress(percent, text) {
+      const progressBar = document.getElementById("progressBar");
+      const progressText = document.getElementById("progressText");
+      progressBar.value = percent;
+      progressText.textContent = text;
+    }
+
+    // =========================
+    // ID formatting (Span can be numeric or letters)
+    // =========================
+    function formatSpan(spanVal) {
+      const s = (spanVal ?? "").toString().trim();
+      if (/^\d+$/.test(s)) return s.padStart(2, "0");
+      return s;
+    }
+    function formatGirder(girderVal) {
+      const g = (girderVal ?? "").toString().trim();
+      if (/^\d+$/.test(g)) return g.padStart(2, "0");
+      return g;
+    }
+    function formatInterval(i) { return i.toString().padStart(2, "0"); }
+
+    // =========================
+    // Parabola coefficient A for f(t)=A*(t^2-t), supports at 0
+    // =========================
+    function computeAFromObservations(obs) {
+      if (!obs || obs.length === 0) return 0;
+      const b = (t) => (t*t - t);
+
+      if (obs.length === 1) {
+        const bt = b(obs[0].t);
+        return Math.abs(bt) > 1e-12 ? (obs[0].y / bt) : 0;
+      }
+
+      let num = 0, den = 0;
+      for (const o of obs) {
+        const bt = b(o.t);
+        num += o.y * bt;
+        den += bt * bt;
+      }
+      return den !== 0 ? (num / den) : 0;
+    }
+
+    // =========================
+    // Upload status messages
+    // =========================
+    document.getElementById('fileInput').addEventListener('change', function(){
+      const statusDiv = document.getElementById('uploadStatus');
+      if (this.files && this.files.length > 0) {
+        statusDiv.textContent = "Spreadsheet uploaded correctly.";
+        statusDiv.className = "red-message";
+      } else statusDiv.textContent = "";
+    });
+
+    document.getElementById('dtmFileInput').addEventListener('change', function(){
+      const statusDiv = document.getElementById('dtmUploadStatus');
+      if (this.files && this.files.length > 0) {
+        statusDiv.textContent = "DTM surface file uploaded correctly.";
+        statusDiv.className = "red-message";
+      } else statusDiv.textContent = "";
+    });
+
+    // =========================
+    // Download Template
+    // =========================
+    document.getElementById('downloadTemplateBtn').addEventListener('click', function(){
+      const templateData = [[
+        "Span number",
+        "Girder number",
+        "Girder width (ft)",
+        "Girder height (ft)",
+        "Camber at midspan (in)",
+        "Deflection at midspan (in) [required]",
+        "Deflection at quarter span (in) [optional]",
+        "Deflection at third span (in) [optional]",
+        "Support1 Northing (ft)",
+        "Support1 Easting (ft)",
+        "Support1 Seat Z (ft)",
+        "Bearing height at Support1 (in)",
+        "Plate height at Support1 (in)",
+        "Support2 Northing (ft)",
+        "Support2 Easting (ft)",
+        "Support2 Seat Z (ft)",
+        "Bearing height at Support2 (in)",
+        "Plate height at Support2 (in)"
+      ]];
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(templateData);
+      XLSX.utils.book_append_sheet(wb, ws, "Template");
+
+      const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+      const blob = new Blob([wbout], {type:"application/octet-stream"});
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Data_Input Template.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+
+    // =========================
+    // Calculate and export Top-of-Girder + build graph profiles
+    // =========================
+    document.getElementById('calculateBtn').addEventListener('click', function(){
+      const startTime = performance.now();
+      updateProgress(0, "Starting calculation...");
+
+      for (const k of Object.keys(profiles)) delete profiles[k];
+      for (const k of Object.keys(spanToGirders)) delete spanToGirders[k];
+
+      const fileInput = document.getElementById('fileInput');
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert("Please upload the input Excel file.");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      const logMessages = [];
+
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type:'array'});
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+
+        const rawData = XLSX.utils.sheet_to_json(sheet, {header:1}).slice(1);
+        const totalRows = rawData.length;
+
+        const intervals = parseInt(document.getElementById('intervalsInput').value, 10);
+        const output = [];
+        output.push(["N", "E", "Elevation (ft)", "Description", "Deflection (ft)", "Camber (ft)"]);
+
+        rawData.forEach((row, rowIndex) => {
+          const spanRaw = row[0];
+          const girderRaw = row[1];
+
+          const spanDisplay = (spanRaw ?? "").toString().trim();
+          const girderDisplay = (girderRaw ?? "").toString().trim();
+
+          const girderWidth = row[2];
+          const girderHeight = row[3];
+          const camberMid = row[4];
+
+          const defMid = row[5];     // required
+          const defQuarter = row[6]; // optional
+          const defThird = row[7];   // optional
+
+          const support1N = row[8];
+          const support1E = row[9];
+          const support1Z = row[10];
+          const support1_bearing = row[11];
+          const support1_plate = row[12];
+
+          const support2N = row[13];
+          const support2E = row[14];
+          const support2Z = row[15];
+          const support2_bearing = row[16];
+          const support2_plate = row[17];
+
+          const bearingFeet1 = support1_bearing / 12;
+          const plateFeet1 = support1_plate / 12;
+          const bearingFeet2 = support2_bearing / 12;
+          const plateFeet2 = support2_plate / 12;
+
+          const obsDef = [];
+          if (defQuarter !== undefined && defQuarter !== null && defQuarter !== "") obsDef.push({ t: 0.25, y: parseFloat(defQuarter) });
+          if (defThird   !== undefined && defThird   !== null && defThird   !== "") obsDef.push({ t: 1/3,  y: parseFloat(defThird)   });
+          if (defMid     !== undefined && defMid     !== null && defMid     !== "") obsDef.push({ t: 0.5,  y: parseFloat(defMid)     });
+
+          const A_def_in = computeAFromObservations(obsDef);
+          const A_camber_in = (camberMid !== undefined && camberMid !== null && camberMid !== 0) ? (-4 * camberMid) : 0;
+
+          logMessages.push(`Row ${rowIndex+2}: Span ${spanDisplay}, Girder ${girderDisplay}. A_def=${A_def_in.toFixed(3)} in, A_camber=${A_camber_in.toFixed(3)} in.`);
+
+          const dx = support2E - support1E;
+          const dy = support2N - support1N;
+          const L_val = Math.sqrt(dx*dx + dy*dy);
+
+          let p_x = 0, p_y = 0;
+          if (L_val > 0) { p_x = -dy / L_val; p_y = dx / L_val; }
+
+          const key = `${spanDisplay}||${girderDisplay}`;
+          if (!profiles[key]) profiles[key] = { spanDisplay, girderDisplay, Lft: L_val, points: [] };
+          if (!spanToGirders[spanDisplay]) spanToGirders[spanDisplay] = new Set();
+          spanToGirders[spanDisplay].add(girderDisplay);
+
+          for (let i = 0; i <= intervals; i++) {
+            const t = i / intervals;
+
+            const N_center = support1N + t * (support2N - support1N);
+            const E_center = support1E + t * (support2E - support1E);
+
+            const seatZ = support1Z + t * (support2Z - support1Z);
+            const bearingFeet = bearingFeet1 + t * (bearingFeet2 - bearingFeet1);
+            const plateFeet = plateFeet1 + t * (plateFeet2 - plateFeet1);
+
+            const deflection_in = A_def_in * (t*t - t);
+            const camber_in = A_camber_in * (t*t - t);
+
+            const deflection_ft = deflection_in / 12;
+            const camber_ft = camber_in / 12;
+
+            const elevation = seatZ + bearingFeet + plateFeet + girderHeight + deflection_ft;
+
+            const offset = girderWidth / 2;
+            const N_left = N_center + p_y * offset;
+            const E_left = E_center + p_x * offset;
+            const N_right = N_center - p_y * offset;
+            const E_right = E_center - p_x * offset;
+
+            const baseDesc = formatSpan(spanRaw) + formatGirder(girderRaw) + formatInterval(i);
+            const descLeft = baseDesc + "L";
+            const descRight = baseDesc + "R";
+
+            output.push([N_left, E_left, elevation, descLeft, deflection_ft, camber_ft]);
+            output.push([N_right, E_right, elevation, descRight, deflection_ft, camber_ft]);
+
+            const xFt = (L_val || 0) * t;
+            profiles[key].points.push({ xFt, defIn: deflection_in, i });
+          }
+
+          updateProgress(Math.round(((rowIndex+1) / totalRows) * 100), `Processed row ${rowIndex+1} of ${totalRows}`);
+        });
+
+        calculatedPoints = output;
+
+        const calcEndTime = performance.now();
+        logMessages.push(`Calculation processing time: ${(calcEndTime - startTime).toFixed(0)} ms`);
+        updateProgress(100, "Calculation complete");
+
+        const wbOut = XLSX.utils.book_new();
+        const wsOut = XLSX.utils.aoa_to_sheet(output);
+        XLSX.utils.book_append_sheet(wbOut, wsOut, "Results");
+
+        const wbout = XLSX.write(wbOut, {bookType:'xlsx', type:'array'});
+        const blobExcel = new Blob([wbout], {type:"application/octet-stream"});
+        const urlExcel = URL.createObjectURL(blobExcel);
+
+        const aExcel = document.createElement("a");
+        aExcel.href = urlExcel;
+        aExcel.download = "Top of girder.xlsx";
+        document.body.appendChild(aExcel);
+        aExcel.click();
+        document.body.removeChild(aExcel);
+        setTimeout(() => URL.revokeObjectURL(urlExcel), 1000);
+
+        document.getElementById("logOutput").textContent = logMessages.join("\n");
+
+        populateGraphSelectors();
+      };
+
+      reader.readAsArrayBuffer(file);
+    });
+
+    // =========================
+    // Graph
+    // =========================
+    const spanSel = document.getElementById("graphSpanSelect");
+    const girderSel = document.getElementById("graphGirderSelect");
+
+    spanSel.addEventListener("change", () => {
+      populateGirderSelector(spanSel.value);
+      refreshChartFromSelections();
+    });
+    girderSel.addEventListener("change", refreshChartFromSelections);
+
+    function populateGraphSelectors() {
+      const spans = Object.keys(spanToGirders).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+      spanSel.innerHTML = "";
+
+      if (spans.length === 0) {
+        spanSel.disabled = true;
+        girderSel.disabled = true;
+        spanSel.innerHTML = `<option value="">(Run calculation first)</option>`;
+        girderSel.innerHTML = `<option value="">(Run calculation first)</option>`;
+        return;
+      }
+
+      spans.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s;
+        opt.textContent = s;
+        spanSel.appendChild(opt);
+      });
+
+      spanSel.disabled = false;
+      spanSel.value = spans[0];
+      populateGirderSelector(spans[0]);
+
+      if (document.getElementById("tab-graph").classList.contains("active")) refreshChartFromSelections();
+    }
+
+    function populateGirderSelector(spanValue) {
+      const girderSet = spanToGirders[spanValue];
+      const girders = girderSet ? Array.from(girderSet).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true})) : [];
+
+      girderSel.innerHTML = "";
+      if (girders.length === 0) {
+        girderSel.disabled = true;
+        girderSel.innerHTML = `<option value="">(No girders found)</option>`;
+        return;
+      }
+
+      girders.forEach(g => {
+        const opt = document.createElement("option");
+        opt.value = g;
+        opt.textContent = g;
+        girderSel.appendChild(opt);
+      });
+
+      girderSel.disabled = false;
+      girderSel.value = girders[0];
+    }
+
+    function refreshChartFromSelections() {
+      if (!window.Chart) return;
+
+      const spanVal = spanSel.value;
+      const girderVal = girderSel.value;
+      if (!spanVal || !girderVal) return;
+
+      const key = `${spanVal}||${girderVal}`;
+      const prof = profiles[key];
+      if (!prof || !prof.points || prof.points.length === 0) return;
+
+      const pts = prof.points.slice().sort((a,b)=>a.i-b.i);
+
+      const dataPts = pts.map(p => ({
+        x: p.xFt,
+        y: p.defIn,
+        yRaw: p.defIn,
+        i: p.i
+      }));
+
+      const title = `Span ${spanVal} — Girder ${girderVal}`;
+      renderGirderChart(dataPts, title);
+    }
+
+    // Add a buffer so labels don't get clipped:
+    // - Expand x/y axis ranges slightly
+    // - Increase chart layout padding
+    // - Use datalabels clamp + clip
+    function renderGirderChart(dataPts, titleText) {
+      const ctx = document.getElementById("girderChart").getContext("2d");
+
+      if (girderChart) { girderChart.destroy(); girderChart = null; }
+
+      const xs = dataPts.map(p => p.x);
+      const ys = dataPts.map(p => p.yRaw);
+
+      const xMin = Math.min(...xs);
+      const xMax = Math.max(...xs);
+      const yMin = Math.min(...ys);
+      const yMax = Math.max(...ys);
+
+      const xRange = Math.max(xMax - xMin, 1e-9);
+      const yRange = Math.max(yMax - yMin, 1e-9);
+
+      const xPad = xRange * 0.03; // 3% buffer left/right
+      const yPad = yRange * 0.10; // 10% buffer top/bottom (helps labels at peaks)
+
+      girderChart = new Chart(ctx, {
+        type: "scatter",
+        data: {
+          datasets: [{
+            label: "Deflection (in)",
+            data: dataPts,
+            showLine: true,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: {
+            padding: { top: 36, right: 26, bottom: 18, left: 18 } // extra buffer all around
+          },
+          plugins: {
+            legend: { display: false },
+            title: {
+              display: true,
+              text: titleText,
+              font: { size: 16 },
+              padding: { top: 10, bottom: 14 }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const p = ctx.raw;
+                  return `Interval ${p.i} | x = ${p.x.toFixed(2)} ft, deflection = ${p.yRaw.toFixed(3)} in`;
+                }
+              }
+            },
+            datalabels: window.ChartDataLabels ? {
+              align: "top",
+              anchor: "end",
+              offset: 8,
+              clamp: true,
+              clip: false,  // allow labels to render into layout padding
+              formatter: (val) => {
+                if (!val || typeof val.yRaw !== "number") return "";
+                // label every other point + always supports
+                if ((val.i % 2) === 1 && val.i !== 0) return "";
+                return val.yRaw.toFixed(3);
+              }
+            } : undefined
+          },
+          scales: {
+            x: {
+              type: "linear",
+              title: { display: true, text: "Length along girder (ft)" },
+              min: xMin - xPad,
+              max: xMax + xPad,
+              ticks: { maxTicksLimit: 12 }
+            },
+            y: {
+              title: { display: true, text: "Deflection (in)" },
+              min: yMin - yPad,
+              max: yMax + yPad,
+              ticks: { maxTicksLimit: 8 }
+            }
+          }
+        }
+      });
+    }
+
+    // =========================
+    // Projection (unchanged)
+    // =========================
+    document.getElementById('projectBtn').addEventListener('click', function(){
+      const projStartTime = performance.now();
+      updateProgress(0, "Starting projection...");
+
+      if (!calculatedPoints) {
+        alert("Please calculate the top-of-girder points first.");
+        return;
+      }
+
+      const dtmInput = document.getElementById('dtmFileInput');
+      if (!dtmInput.files || dtmInput.files.length === 0) {
+        alert("Please upload the DTM XML surface file.");
+        return;
+      }
+
+      const dtmFile = dtmInput.files[0];
+      const reader = new FileReader();
+      const projLog = [];
+
+      reader.onload = function(e) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
+        const ns = "http://www.landxml.org/schema/LandXML-1.2";
+
+        let pElements = xmlDoc.getElementsByTagNameNS(ns, "P");
+        if (!pElements || pElements.length === 0) pElements = xmlDoc.getElementsByTagName("P");
+
+        const dtmPointsById = {};
+        for (let i = 0; i < pElements.length; i++) {
+          const pElem = pElements[i];
+          const id = pElem.getAttribute("id");
+          const coords = pElem.textContent.trim().split(/\s+/);
+          if (id && coords.length >= 3) {
+            dtmPointsById[id] = { N: parseFloat(coords[0]), E: parseFloat(coords[1]), Z: parseFloat(coords[2]) };
+          }
+        }
+
+        if (Object.keys(dtmPointsById).length === 0) {
+          alert("No surface points found in the XML file. Please verify the file format.");
+          return;
+        }
+
+        let fElements = xmlDoc.getElementsByTagNameNS(ns, "F");
+        if (!fElements || fElements.length === 0) fElements = xmlDoc.getElementsByTagName("F");
+
+        const dtmTriangles = [];
+        for (let j = 0; j < fElements.length; j++) {
+          const fElem = fElements[j];
+          let v1 = fElem.getAttribute("v1");
+          let v2 = fElem.getAttribute("v2");
+          let v3 = fElem.getAttribute("v3");
+
+          if (!v1 || !v2 || !v3) {
+            const faceText = fElem.textContent.trim();
+            const faceNumbers = faceText.split(/\s+/);
+            if (faceNumbers.length >= 3) {
+              v1 = faceNumbers[0];
+              v2 = faceNumbers[1];
+              v3 = faceNumbers[2];
+            }
+          }
+
+          if (v1 && v2 && v3 && dtmPointsById[v1] && dtmPointsById[v2] && dtmPointsById[v3]) {
+            dtmTriangles.push({ A: dtmPointsById[v1], B: dtmPointsById[v2], C: dtmPointsById[v3] });
+          }
+        }
+
+        projLog.push(`Found ${dtmTriangles.length} surface triangles.`);
+
+        const projectedOutput = [];
+        projectedOutput.push(["N", "E", "Elevation (ft)", "Description"]);
+
+        function barycentric(P, A, B, C) {
+          const det = (B.E - C.E) * (A.N - C.N) + (C.N - B.N) * (A.E - C.E);
+          if (Math.abs(det) < 1e-10) return null;
+
+          const alpha = ((B.E - C.E) * (P.N - C.N) + (C.N - B.N) * (P.E - C.E)) / det;
+          const beta  = ((C.E - A.E) * (P.N - C.N) + (A.N - C.N) * (P.E - C.E)) / det;
+          const gamma = 1 - alpha - beta;
+
+          if (alpha >= -1e-6 && beta >= -1e-6 && gamma >= -1e-6) return { alpha, beta, gamma };
+          return null;
+        }
+
+        for (let k = 1; k < calculatedPoints.length; k++) {
+          const point = calculatedPoints[k];
+          const N_calc = parseFloat(point[0]);
+          const E_calc = parseFloat(point[1]);
+          const deflection = parseFloat(point[4]); // ft
+          const desc = point[3];
+
+          const P = { N: N_calc, E: E_calc };
+          let found = false;
+          let projectedElevation = 0;
+
+          for (let t = 0; t < dtmTriangles.length; t++) {
+            const tri = dtmTriangles[t];
+            const bary = barycentric(P, tri.A, tri.B, tri.C);
+            if (bary) {
+              const surfaceElevation = bary.alpha * tri.A.Z + bary.beta * tri.B.Z + bary.gamma * tri.C.Z;
+              projectedElevation = surfaceElevation + deflection;
+              projLog.push(`Point ${desc}: Surface elevation = ${surfaceElevation.toFixed(3)} ft; Deflection = ${deflection.toFixed(3)} ft; Deflected ToD elevation = ${projectedElevation.toFixed(3)} ft.`);
+              found = true;
+              break;
+            }
+          }
+
+          if (!found) {
+            projLog.push(`Point ${desc} (N: ${N_calc.toFixed(3)}, E: ${E_calc.toFixed(3)}) does not fall within the surface triangulation. Elevation set to 0.`);
+          }
+
+          projectedOutput.push([N_calc, E_calc, projectedElevation, desc]);
+        }
+
+        const projEndTime = performance.now();
+        projLog.push(`Projection processing time: ${(projEndTime - projStartTime).toFixed(0)} ms`);
+        updateProgress(100, "Projection complete");
+
+        const wbProj = XLSX.utils.book_new();
+        const wsProj = XLSX.utils.aoa_to_sheet(projectedOutput);
+        XLSX.utils.book_append_sheet(wbProj, wsProj, "ProjectedResults");
+
+        const wbProjOut = XLSX.write(wbProj, {bookType:'xlsx', type:'array'});
+        const blobProj = new Blob([wbProjOut], {type:"application/octet-stream"});
+        const urlProj = URL.createObjectURL(blobProj);
+
+        const aProj = document.createElement("a");
+        aProj.href = urlProj;
+        aProj.download = "ToD Deflected.xlsx";
+        document.body.appendChild(aProj);
+        aProj.click();
+        document.body.removeChild(aProj);
+        setTimeout(() => URL.revokeObjectURL(urlProj), 1000);
+
+        const currentLog = document.getElementById("logOutput").textContent;
+        document.getElementById("logOutput").textContent = currentLog + "\n" + projLog.join("\n");
+      };
+
+      reader.readAsText(dtmFile);
+    });
+
+    // =========================
+    // Download Log
+    // =========================
+    document.getElementById('downloadLogBtn').addEventListener('click', function(){
+      const logText = document.getElementById("logOutput").textContent;
+      const blobLog = new Blob([logText], { type: "text/plain" });
+      const urlLog = URL.createObjectURL(blobLog);
+
+      const aLog = document.createElement("a");
+      aLog.href = urlLog;
+      aLog.download = "Log.txt";
+      document.body.appendChild(aLog);
+      aLog.click();
+      document.body.removeChild(aLog);
+      setTimeout(() => URL.revokeObjectURL(urlLog), 1000);
+    });
+
+    // =========================
+    // Help
+    // =========================
+    document.getElementById('helpButton').addEventListener('click', function(){
+      const helpText = `Girder and Top of Deck Deflected points - Help
+
+1. Download Template:
+   - Click "Download Template" to get the input Excel template.
+   - Fill in the girder data as specified in the template.
+
+2. Upload Data:
+   - Upload the completed "Girder Data sheet" Excel file.
+   - Optionally, upload a FG DTM XML surface file to project the girder points onto the surface.
+
+3. Number of Intervals:
+   - Specify the number of intervals at which points will be calculated.
+
+4. Calculate Points:
+   - Click "Calculate and Export Top-Of-Girder Points" to process the spreadsheet.
+   - The calculated points are exported as "Top of girder.xlsx".
+   - Note: The point description is in the format SSGGIID, where:
+       SS is the Span number,
+       GG is the girder number,
+       II is the interval point,
+       D is the side (L for left, R for right).
+     If Span is a number, SS is padded to 2 digits (e.g., 01). If Span is a letter, it is not padded (e.g., A).
+
+5. Deflection Inputs:
+   - Deflection at midspan is required.
+   - Deflection at quarter-span and third-span are optional and provide redundancy.
+   - The deflection curve is assumed parabolic with zero at both supports.
+
+6. Project Points:
+   - Click "Export Top of Deck Deflected Points" to project the calculated points onto the surface.
+   - The program uses triangle-based interpolation to compute the surface elevation and adds the calculated deflection.
+   - If a point does not fall within the surface triangulation, its elevation is set to 0.
+   - The projected points are exported as "ToD Deflected.xlsx".
+
+7. Girder Profile Graph:
+   - Use the "Girder Profile Graph" tab to view the deflection parabola for a selected span and girder.
+   - The y-axis is shown in inches.
+   - Hover points to see Interval, station, and deflection.
+
+8. Download Log:
+   - Click "Download Log File" to save the processing log as "Log.txt".
+
+Ensure that your input files are in the same coordinate system.
+
+For further assistance, please reach out to Rafa Ramirez.
+`;
+      const helpWindow = window.open("", "Help", "width=650,height=560,scrollbars=yes");
+      helpWindow.document.write("<pre>" + helpText + "</pre>");
+    });
+  </script>
+</body>
+</html>
