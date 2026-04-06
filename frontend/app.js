@@ -428,38 +428,40 @@ function getPowerOfTenTickStep(minValue, maxValue) {
 function renderPlanChart() {
   const span = ui.graphSpanSelect.value;
   const selectedGirder = ui.graphGirderSelect.value;
-  if (!span) return;
+  const spans = Object.keys(state.spanToGirders).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  if (!spans.length) return;
 
-  const girders = Array.from(state.spanToGirders[span] ?? []).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  if (!girders.length) return;
-
-  const traces = girders
-    .map((girder) => {
-      const key = `${span}||${girder}`;
-      const geo = state.girderGeometry[key];
-      if (!geo) return null;
-      const isSelected = girder === selectedGirder;
-      return {
-        x: [geo.support1E, geo.support2E],
-        y: [geo.support1N, geo.support2N],
-        mode: "lines+markers",
-        line: {
-          width: isSelected ? 6 : 3,
-          color: isSelected ? "#d63384" : "#6c757d",
-        },
-        marker: { size: isSelected ? 10 : 7 },
-        name: `Girder ${girder}`,
-        customdata: [[span, girder], [span, girder]],
-        hovertemplate: `Span ${span}<br>Girder ${girder}<extra></extra>`,
-      };
+  const traces = spans
+    .flatMap((spanValue) => {
+      const girders = Array.from(state.spanToGirders[spanValue] ?? []).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      return girders.map((girder) => {
+        const key = `${spanValue}||${girder}`;
+        const geo = state.girderGeometry[key];
+        if (!geo) return null;
+        const isSelected = spanValue === span && girder === selectedGirder;
+        return {
+          x: [geo.support1E, geo.support2E],
+          y: [geo.support1N, geo.support2N],
+          mode: "lines+markers",
+          line: {
+            width: isSelected ? 6 : 3,
+            color: isSelected ? "#d63384" : "#6c757d",
+          },
+          marker: { size: isSelected ? 10 : 7 },
+          name: `Span ${spanValue} — Girder ${girder}`,
+          customdata: [[spanValue, girder], [spanValue, girder]],
+          hovertemplate: `Span ${spanValue}<br>Girder ${girder}<extra></extra>`,
+        };
+      });
     })
     .filter(Boolean);
+  if (!traces.length) return;
 
   Plotly.newPlot(
     ui.planChart,
     traces,
     {
-      title: `<b>Plan View for Span ${span} (N/E)</b>`,
+      title: "<b>Plan View for All Spans (N/E)</b>",
       xaxis: {
         title: { text: "Easting (ft)", standoff: 34 },
         dtick: getPowerOfTenTickStep(
