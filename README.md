@@ -28,7 +28,6 @@ python app.py
 
 Open: `http://127.0.0.1:8000`
 
-> Note: use `source` (not `ource`) to activate the virtual environment.
 
 ## Other ways to run/test your branch
 
