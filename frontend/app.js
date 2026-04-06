@@ -496,6 +496,7 @@ function renderPlanChart() {
   );
 }
 
+
 function runCalculation() {
   if (!state.sourceRows.length) {
     window.alert("Please upload the input Excel file.");
