@@ -426,18 +426,19 @@ function getPowerOfTenTickStep(minValue, maxValue) {
 }
 
 function renderPlanChart() {
-  const selectedSpan = ui.graphSpanSelect.value;
+  const span = ui.graphSpanSelect.value;
   const selectedGirder = ui.graphGirderSelect.value;
+  if (!span) return;
 
-  const keys = Object.keys(state.girderGeometry).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  if (!keys.length) return;
+  const girders = Array.from(state.spanToGirders[span] ?? []).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  if (!girders.length) return;
 
-  const traces = keys
-    .map((key) => {
-      const [span, girder] = key.split("||");
+  const traces = girders
+    .map((girder) => {
+      const key = `${span}||${girder}`;
       const geo = state.girderGeometry[key];
       if (!geo) return null;
-      const isSelected = span === selectedSpan && girder === selectedGirder;
+      const isSelected = girder === selectedGirder;
       return {
         x: [geo.support1E, geo.support2E],
         y: [geo.support1N, geo.support2N],
@@ -447,7 +448,7 @@ function renderPlanChart() {
           color: isSelected ? "#d63384" : "#6c757d",
         },
         marker: { size: isSelected ? 10 : 7 },
-        name: `Span ${span} - Girder ${girder}`,
+        name: `Girder ${girder}`,
         customdata: [[span, girder], [span, girder]],
         hovertemplate: `Span ${span}<br>Girder ${girder}<extra></extra>`,
       };
@@ -458,7 +459,7 @@ function renderPlanChart() {
     ui.planChart,
     traces,
     {
-      title: "<b>Plan View for All Spans (N/E)</b>",
+      title: `<b>Plan View for Span ${span} (N/E)</b>`,
       xaxis: {
         title: { text: "Easting (ft)", standoff: 34 },
         dtick: getPowerOfTenTickStep(
