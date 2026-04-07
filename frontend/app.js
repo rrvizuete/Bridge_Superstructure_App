@@ -2,6 +2,7 @@ const HELP_TEXT = `1. Data & Calculation Tab:
    - Download Template to get the input Excel format.
    - Upload the completed "Girder Data sheet" file.
    - Review imported rows in the editable grid and adjust values before calculation.
+   - Set "Centerline radius (ft)" per girder: 0 or blank means straight, positive is clockwise, negative is counterclockwise (from Support1 to Support2).
    - Set the number of intervals and run calculation.
    - The Calculation Log is displayed in this same tab and can be downloaded.
 
@@ -41,6 +42,7 @@ const TEMPLATE_HEADERS = [
   "Support2 Seat Z (ft)",
   "Bearing height at Support2 (in)",
   "Plate height at Support2 (in)",
+  "Centerline radius (ft) [optional, 0=straight, +CW, -CCW]",
 ];
 
 const state = {
@@ -102,6 +104,73 @@ function parseNumber(value, fallback = 0) {
   if (value === undefined || value === null || value === "") return fallback;
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeAngle(angle) {
+  let output = angle;
+  while (output <= -Math.PI) output += 2 * Math.PI;
+  while (output > Math.PI) output -= 2 * Math.PI;
+  return output;
+}
+
+function buildCenterlineGeometry(support1E, support1N, support2E, support2N, radiusRaw) {
+  const dE = support2E - support1E;
+  const dN = support2N - support1N;
+  const chordLength = Math.hypot(dE, dN);
+  const signedRadius = parseNumber(radiusRaw, 0);
+
+  if (chordLength <= 1e-12 || Math.abs(signedRadius) <= 1e-12) {
+    return {
+      isCurved: false,
+      signedRadius: 0,
+      length: chordLength,
+      at(t) {
+        const centerE = support1E + t * dE;
+        const centerN = support1N + t * dN;
+        const tangentE = chordLength > 1e-12 ? dE / chordLength : 1;
+        const tangentN = chordLength > 1e-12 ? dN / chordLength : 0;
+        return { centerE, centerN, tangentE, tangentN, station: chordLength * t };
+      },
+    };
+  }
+
+  const radius = Math.abs(signedRadius);
+  const halfChord = chordLength / 2;
+  if (radius + 1e-9 < halfChord) {
+    throw new Error(`Invalid centerline radius ${signedRadius}: |radius| must be at least ${halfChord.toFixed(3)} ft for this girder length.`);
+  }
+
+  const midpointE = (support1E + support2E) / 2;
+  const midpointN = (support1N + support2N) / 2;
+  const rightUnitE = dN / chordLength;
+  const rightUnitN = -dE / chordLength;
+  const side = signedRadius > 0 ? 1 : -1;
+  const centerOffset = Math.sqrt(Math.max(0, radius * radius - halfChord * halfChord));
+  const circleCenterE = midpointE + side * centerOffset * rightUnitE;
+  const circleCenterN = midpointN + side * centerOffset * rightUnitN;
+
+  const thetaStart = Math.atan2(support1N - circleCenterN, support1E - circleCenterE);
+  const thetaEndRaw = Math.atan2(support2N - circleCenterN, support2E - circleCenterE);
+  let delta = normalizeAngle(thetaEndRaw - thetaStart);
+  if (side > 0 && delta > 0) delta -= 2 * Math.PI;
+  if (side < 0 && delta < 0) delta += 2 * Math.PI;
+
+  const arcLength = Math.abs(delta) * radius;
+
+  return {
+    isCurved: true,
+    signedRadius,
+    length: arcLength,
+    at(t) {
+      const theta = thetaStart + delta * t;
+      const centerE = circleCenterE + radius * Math.cos(theta);
+      const centerN = circleCenterN + radius * Math.sin(theta);
+      const tangentScale = delta >= 0 ? 1 : -1;
+      const tangentE = tangentScale * -Math.sin(theta);
+      const tangentN = tangentScale * Math.cos(theta);
+      return { centerE, centerN, tangentE, tangentN, station: arcLength * t };
+    },
+  };
 }
 
 function computeParabolaA(observations) {
@@ -185,7 +254,7 @@ function renderSourceGrid() {
   ui.sourceTableHead.innerHTML = `<tr>${TEMPLATE_HEADERS.map((h) => `<th>${h}</th>`).join("")}</tr>`;
 
   if (!state.sourceRows.length) {
-    ui.sourceTableBody.innerHTML = '<tr><td colspan="18" class="text-center text-secondary py-3">Upload a spreadsheet to view/edit rows.</td></tr>';
+    ui.sourceTableBody.innerHTML = `<tr><td colspan="${TEMPLATE_HEADERS.length}" class="text-center text-secondary py-3">Upload a spreadsheet to view/edit rows.</td></tr>`;
     return;
   }
 
@@ -246,6 +315,7 @@ function buildGirderPoints(row, intervals) {
   const support2Z = parseNumber(row[15]);
   const support2Bearing = parseNumber(row[16]);
   const support2Plate = parseNumber(row[17]);
+  const centerlineRadius = parseNumber(row[18], 0);
 
   if (!spanDisplay || !girderDisplay || !Number.isFinite(defMid)) {
     throw new Error("Span, Girder, and Deflection at midspan are required in each row.");
@@ -264,24 +334,17 @@ function buildGirderPoints(row, intervals) {
   const bearingFeet2 = support2Bearing / 12;
   const plateFeet2 = support2Plate / 12;
 
-  const dE = support2E - support1E;
-  const dN = support2N - support1N;
-  const length = Math.hypot(dE, dN);
-
-  let perpendicularE = 0;
-  let perpendicularN = 0;
-  if (length > 0) {
-    perpendicularE = -dN / length;
-    perpendicularN = dE / length;
-  }
+  const centerline = buildCenterlineGeometry(support1E, support1N, support2E, support2N, centerlineRadius);
 
   const rows = [];
   const graphPoints = [];
+  const planCenterline = [];
 
   for (let i = 0; i <= intervals; i += 1) {
     const t = i / intervals;
-    const centerN = support1N + t * (support2N - support1N);
-    const centerE = support1E + t * (support2E - support1E);
+    const geometryPoint = centerline.at(t);
+    const centerN = geometryPoint.centerN;
+    const centerE = geometryPoint.centerE;
 
     const seatZ = support1Z + t * (support2Z - support1Z);
     const bearing = bearingFeet1 + t * (bearingFeet2 - bearingFeet1);
@@ -295,6 +358,8 @@ function buildGirderPoints(row, intervals) {
     const elevation = seatZ + bearing + plate + girderHeight + deflectionFt;
 
     const halfWidth = girderWidth / 2;
+    const perpendicularE = -geometryPoint.tangentN;
+    const perpendicularN = geometryPoint.tangentE;
     const leftN = centerN + perpendicularN * halfWidth;
     const leftE = centerE + perpendicularE * halfWidth;
     const rightN = centerN - perpendicularN * halfWidth;
@@ -305,11 +370,13 @@ function buildGirderPoints(row, intervals) {
     rows.push([rightN, rightE, elevation, `${base}R`, deflectionFt, camberFt]);
 
     graphPoints.push({
-      station: length * t,
+      station: geometryPoint.station,
       deflectionIn,
       interval: i,
       t,
     });
+
+    planCenterline.push({ n: centerN, e: centerE });
   }
 
   return {
@@ -321,6 +388,9 @@ function buildGirderPoints(row, intervals) {
     support1E,
     support2N,
     support2E,
+    centerlineRadius,
+    centerlineCurved: centerline.isCurved,
+    planCenterline,
     rows,
     graphPoints,
   };
@@ -440,8 +510,8 @@ function renderPlanChart() {
         if (!geo) return null;
         const isSelected = spanValue === span && girder === selectedGirder;
         return {
-          x: [geo.support1E, geo.support2E],
-          y: [geo.support1N, geo.support2N],
+          x: geo.planCenterline.map((point) => point.e),
+          y: geo.planCenterline.map((point) => point.n),
           mode: "lines+markers",
           line: {
             width: isSelected ? 6 : 3,
@@ -534,6 +604,7 @@ function runCalculation() {
         support1E: result.support1E,
         support2N: result.support2N,
         support2E: result.support2E,
+        planCenterline: result.planCenterline,
       };
 
       if (!state.spanToGirders[result.spanDisplay]) {
@@ -542,7 +613,7 @@ function runCalculation() {
       state.spanToGirders[result.spanDisplay].add(result.girderDisplay);
 
       state.logs.push(
-        `Row ${rowIndex + 2}: Span ${result.spanDisplay}, Girder ${result.girderDisplay}. A_def=${result.aDefIn.toFixed(3)} in, A_camber=${result.aCamberIn.toFixed(3)} in.`,
+        `Row ${rowIndex + 2}: Span ${result.spanDisplay}, Girder ${result.girderDisplay}. A_def=${result.aDefIn.toFixed(3)} in, A_camber=${result.aCamberIn.toFixed(3)} in, centerline radius=${result.centerlineRadius.toFixed(3)} ft.`,
       );
     } catch (error) {
       state.logs.push(`Row ${rowIndex + 2}: ERROR - ${error.message}`);
