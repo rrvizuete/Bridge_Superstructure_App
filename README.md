@@ -5,7 +5,7 @@ Professional scaffolding for girder/top-of-deck deflection workflows.
 ## Why this architecture
 
 - **Backend:** FastAPI (Python) for numerical workflows (least-squares parabola fitting with NumPy), file I/O, and future geometry/DTM processing.
-- **Frontend:** Tabbed Bootstrap UI + Plotly charts for clear workflow steps and quick iteration.
+- **Frontend:** Tabbed Bootstrap UI + Plotly charts for clear workflow steps and quick iteration. Bootstrap, Plotly, and SheetJS (xlsx) are vendored locally under `frontend/vendor/` rather than loaded from a CDN, so the app works fully offline / behind restrictive network policies.
 - **Reasoning:** This gives a maintainable split between engineering calculations and UX, while staying easy to extend into plan-view rendering and exports.
 
 ## Current scaffold tabs
@@ -57,3 +57,17 @@ Expected response:
 - `GET /api/health`
 - `POST /api/fit-parabola`
 - `POST /api/build-profile`
+
+## Updating vendored frontend libraries
+
+`frontend/vendor/` holds the prebuilt Bootstrap, Plotly, and SheetJS (xlsx)
+bundles the app loads instead of a CDN. To bump a version, edit the pinned
+version in `package.json`, then:
+
+```bash
+npm install
+npm run vendor
+```
+
+This copies the new dist files from `node_modules/` into `frontend/vendor/`.
+`node_modules/` itself is never committed — only the copied output is.

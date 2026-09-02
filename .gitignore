@@ -7,6 +7,9 @@ __pycache__/
 .venv/
 venv/
 
+# Node (used only to vendor frontend/vendor/ — see package.json "vendor" script)
+node_modules/
+
 # Tooling caches
 .pytest_cache/
 .mypy_cache/

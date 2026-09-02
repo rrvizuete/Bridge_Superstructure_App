@@ -1,0 +1,26 @@
+{
+  "name": "bridge_superstructure_app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Professional scaffolding for girder/top-of-deck deflection workflows.",
+  "scripts": {
+    "vendor": "bash scripts/vendor-frontend-libs.sh",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rrvizuete/bridge_superstructure_app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rrvizuete/bridge_superstructure_app/issues"
+  },
+  "homepage": "https://github.com/rrvizuete/bridge_superstructure_app#readme",
+  "dependencies": {
+    "bootstrap": "5.3.3",
+    "plotly.js-dist-min": "2.35.2",
+    "xlsx": "0.18.5"
+  }
+}
